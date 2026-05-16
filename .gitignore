@@ -1,0 +1,9 @@
+# 巡检报告（自动生成）
+reports/*.txt
+
+# 日志文件
+logs/*.log
+
+# Python 缓存
+__pycache__/
+*.pyc
