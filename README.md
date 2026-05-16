@@ -2,7 +2,7 @@
 
 > Lightweight one-click Linux server health check & automated inspection tool. Built for Raspberry Pi enthusiasts, homelab owners, and Linux beginners.
 
-[![Version](https://img.shields.io/badge/version-v0.3-blue)](#)
+[![Version](https://img.shields.io/badge/version-v0.4-blue)](#)
 [![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnu-bash&logoColor=white)](#)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Raspberry%20Pi-orange)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](#)
@@ -199,7 +199,7 @@ ls -l reports/
 | v0.1 | Project setup, Git init, System resource inspection | Week 1 |
 | v0.2 | Process monitor, basic log reading, first integration test | Week 1 |
 | v0.3 | Log anomaly stats, network check, structured report | Week 2 |
-| v0.4 | Error handling, anomaly markers, report auto-save | Week 2 |
+| v0.4 | Error handling, anomaly markers, report auto-save | Done |
 | v0.5 | Crontab config, daily auto-report | Week 3 |
 | v1.0 | Full integration, bug fixes, documentation, demo | Week 3 |
 

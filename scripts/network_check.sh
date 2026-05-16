@@ -118,22 +118,28 @@ check_gateway() {
     echo "========== 默认网关 =========="
 
     local gateway
-    if gateway=$(ip route show default 2>/dev/null | awk '{print $3}' | head -1); then
-        if [[ -n "$gateway" ]]; then
-            echo "默认网关: ${gateway}"
 
-            # 测试网关连通性
-            if ping -c 1 -W 2 "$gateway" &>/dev/null; then
-                echo -e "${GREEN}[正常] 网关可达${NC}"
-            else
-                echo -e "${RED}[异常] 网关不可达${NC}"
-                ANOMALY_FOUND=1
-            fi
+    # 尝试多种方式获取默认网关
+    if command -v ip &>/dev/null; then
+        gateway=$(ip route show default 2>/dev/null | awk '{print $3}' | head -1)
+    elif command -v route &>/dev/null; then
+        gateway=$(route -n 2>/dev/null | awk '$1=="0.0.0.0" {print $2; exit}')
+    elif command -v netstat &>/dev/null; then
+        gateway=$(netstat -rn 2>/dev/null | awk '$1=="0.0.0.0" {print $2; exit}')
+    fi
+
+    if [[ -n "$gateway" ]]; then
+        echo "默认网关: ${gateway}"
+
+        # 测试网关连通性
+        if ping -c 1 -W 2 "$gateway" &>/dev/null; then
+            echo -e "${GREEN}[正常] 网关可达${NC}"
         else
-            echo -e "${YELLOW}[警告] 未配置默认网关${NC}"
+            echo -e "${RED}[异常] 网关不可达${NC}"
+            ANOMALY_FOUND=1
         fi
     else
-        echo -e "${YELLOW}[警告] 无法获取网关信息${NC}"
+        echo -e "${YELLOW}[警告] 未配置默认网关或无法获取网关信息${NC}"
     fi
 
     echo ""
@@ -143,6 +149,11 @@ check_gateway() {
 check_interfaces() {
     echo "========== 网卡状态 =========="
     echo ""
+
+    if ! command -v ip &>/dev/null; then
+        echo -e "${YELLOW}[警告] ip 命令不可用，跳过网卡状态检测${NC}"
+        echo ""; return
+    fi
 
     ip -brief addr show 2>/dev/null | while read -r line; do
         local iface=$(echo "$line" | awk '{print $1}')

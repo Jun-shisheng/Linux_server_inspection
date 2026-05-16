@@ -24,6 +24,12 @@ ANOMALY_FOUND=0
 check_cpu() {
     echo "========== CPU 与系统负载 =========="
 
+    # 检查 /proc 文件系统
+    if [[ ! -f /proc/stat ]]; then
+        echo -e "${YELLOW}[警告] /proc/stat 不可用，无法检测 CPU 使用率${NC}"
+        echo ""; return
+    fi
+
     # CPU 使用率（通过 /proc/stat 计算）
     local cpu_line
     cpu_line=$(grep '^cpu ' /proc/stat)
@@ -55,13 +61,17 @@ check_cpu() {
     echo "CPU 使用率: ${cpu_usage}%"
 
     # 系统负载
+    if [[ ! -f /proc/loadavg ]]; then
+        echo -e "${YELLOW}[警告] /proc/loadavg 不可用${NC}"
+        echo ""; return
+    fi
     local loadavg
     loadavg=$(cat /proc/loadavg)
     local load_1min=$(echo "$loadavg" | awk '{print $1}')
     local load_5min=$(echo "$loadavg" | awk '{print $2}')
     local load_15min=$(echo "$loadavg" | awk '{print $3}')
     local cpu_cores
-    cpu_cores=$(nproc)
+    cpu_cores=$(nproc 2>/dev/null || grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 1)
 
     echo "CPU 核心数: ${cpu_cores}"
     echo "系统负载 (1/5/15分钟): ${load_1min} / ${load_5min} / ${load_15min}"

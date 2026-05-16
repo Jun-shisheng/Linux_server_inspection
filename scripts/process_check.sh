@@ -23,6 +23,11 @@ ANOMALY_FOUND=0
 # ---------- TOP5 CPU 进程 ----------
 check_top_cpu_processes() {
     echo "========== TOP5 CPU 进程 =========="
+
+    if ! command -v ps &>/dev/null; then
+        echo -e "${YELLOW}[警告] ps 命令不可用${NC}"
+        echo ""; return
+    fi
     echo ""
     printf "%-8s %-6s %-6s %-25s\n" "PID" "CPU%" "MEM%" "COMMAND"
     echo "-----------------------------------------------"
