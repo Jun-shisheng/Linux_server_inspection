@@ -1,220 +1,132 @@
 # Linux Server Daily Inspection Tool
 
-> Lightweight one-click Linux server health check & automated inspection tool. Built for Raspberry Pi enthusiasts, homelab owners, and Linux beginners.
+> 一行命令巡检 Linux 服务器 —— CPU、内存、磁盘、进程、日志、网络、安全，一键出报告。
 
-[![Version](https://img.shields.io/badge/version-v1.0-blue)](#)
+[![Version](https://img.shields.io/badge/version-v2.0-blue)](#)
 [![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnu-bash&logoColor=white)](#)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Raspberry%20Pi-orange)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](#)
 
 ---
 
-## Table of Contents
-
-- [Why This Tool](#why-this-tool)
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [Module Overview](#module-overview)
-- [Project Structure](#project-structure)
-- [Usage](#usage)
-- [Automated Inspection (crontab)](#automated-inspection-crontab)
-- [Tech Stack](#tech-stack)
-- [Development Roadmap](#development-roadmap)
-- [Test Plan](#test-plan)
-
----
-
-## Why This Tool
-
-Managing a personal Linux server or Raspberry Pi usually means running the same commands every day:
+## 快速开始
 
 ```bash
-top    free    df    ps    ss    grep /var/log/syslog
-```
-
-This is tedious, error-prone, and leaves no historical record. This tool replaces all that with a **single command** that checks everything, flags anomalies, and saves a structured report — so you don't miss anything.
-
----
-
-## Features
-
-- **One-click full inspection** — CPU, memory, disk, load, processes, logs, network
-- **Automatic anomaly detection** — high load, disk full, service down, log errors
-- **Structured report output** — color-coded terminal output + saved text report
-- **Scheduled unattended runs** — crontab integration for daily automated checks
-- **Zero extra dependencies** — pure Bash, works out of the box on any Linux distro
-- **Raspberry Pi friendly** — lightweight, no heavy runtime needed
-
----
-
-## Quick Start
-
-```bash
-# 1. Clone the repository
-git clone git@github.com:Jun-shisheng/Linux_server_inspection.git
+# 1. 下载项目
+git clone https://github.com/Jun-shisheng/Linux_server_inspection.git
 cd Linux_server_inspection
 
-# 2. Make scripts executable
-chmod +x scripts/*.sh
+# 2. 运行全量巡检（推荐 root 执行以获得完整信息）
+sudo bash scripts/main.sh
 
-# 3. Run inspection
-./scripts/main.sh
+# 报告自动保存到 reports/ 目录
+```
 
-# 4. View the report
-ls -la reports/
+**就是这么简单。** 不需要装任何依赖，纯 bash 脚本，任何 Linux 发行版开箱即用。
+
+---
+
+## 功能模块
+
+| 模块 | 脚本 | 功能 |
+|------|------|------|
+| 系统资源 | `system_info.sh` | CPU 使用率、负载、内存、磁盘、运行时间 |
+| 进程与服务 | `process_check.sh` | TOP5 进程、sshd/cron 状态、异常进程检测 |
+| 日志分析 | `log_analysis.sh` | syslog 异常关键词统计、高频错误 TOP5、最近异常 |
+| 网络检测 | `network_check.sh` | 公网连通性、DNS 解析、监听端口、网关、网卡状态 |
+| 安全检测 | `security_check.sh` | 失败登录、SUID 文件、空密码用户、sudo 记录 |
+| 定时任务 | `cron_setup.sh` | 配置每日自动巡检 |
+
+---
+
+## 常用命令
+
+```bash
+# 全量巡检（推荐）
+sudo bash scripts/main.sh
+
+# 单独运行某个模块
+bash scripts/system_info.sh      # 只看系统资源
+bash scripts/process_check.sh    # 只看进程
+bash scripts/log_analysis.sh     # 只看日志
+bash scripts/network_check.sh    # 只看网络
+bash scripts/security_check.sh   # 只看安全
+
+# 设置每天 8:00 自动巡检
+bash scripts/cron_setup.sh
+
+# 查看历史报告
+ls -lh reports/
 cat reports/inspection_*.txt
+
+# 运行测试
+bash scripts/tests/test_main.sh
+
+# 更新到最新版本
+git pull origin master
 ```
 
 ---
 
-## Module Overview
-
-| # | Module | Description | Status |
-|---|--------|-------------|--------|
-| 1 | **System Resources** | CPU usage, load average, memory, disk partitions, uptime | Done |
-| 2 | **Process & Service** | TOP5 CPU/memory processes, sshd/cron health check | Done |
-| 3 | **Log Analysis** | syslog `error`/`fail`/`warn` keyword filter & stats | Done |
-| 4 | **Network Check** | Public internet ping, local port listening check | Done |
-| 5 | **Report Generator** | Consolidated structured text report with anomaly markers | Planned |
-| 6 | **Scheduled Task** | crontab daily auto-run + report archival | Done |
-
----
-
-## Project Structure
-
-```
-Linux_server_inspection/
-├── scripts/
-│   ├── main.sh                # Main entry script
-│   ├── system_info.sh         # Module 1: System resource inspection
-│   ├── process_check.sh       # Module 2: Process & service monitor
-│   ├── log_analysis.sh        # Module 3: Log anomaly analysis
-│   ├── network_check.sh       # Module 4: Network connectivity
-│   └── cron_setup.sh           # Module 6: Crontab task manager
-├── reports/                   # Generated inspection reports
-├── logs/                      # Runtime logs
-├── README.md
-└── 项目规划书.md                # Project plan (Chinese)
-```
-
----
-
-## Usage
-
-### Run a single module
-
-Each module can run independently:
-
-```bash
-./scripts/system_info.sh
-```
-
-### Run full inspection
-
-```bash
-./scripts/main.sh
-```
-
-Output is both printed to terminal and saved under `reports/` with timestamp:
-
-```
-reports/inspection_20260516_143000.txt
-```
-
-### Sample output
+## 输出示例
 
 ```
 ============================================================
        Linux Server Daily Inspection Report
        Time: 2026-05-16 14:30:00
        Host: raspberrypi
-       Kernel: 6.1.0-rpi7-rpi-v8
-       Version: v1.0
+       Version: v2.0
 ============================================================
 
 ========== CPU & System Load ==========
-CPU Usage: 12%
-CPU Cores: 4
+CPU Usage: 12%  |  Cores: 4
 Load (1/5/15min): 0.35 / 0.42 / 0.38
 [OK] Load within normal range
 
 ========== Memory Usage ==========
 Total: 7.6G   Used: 1.2G   Free: 5.8G   Available: 6.1G
-Memory Usage: 15.8%
 [OK] Memory usage normal
 
-========== Disk Usage ==========
-Mount: /   Filesystem: /dev/mmcblk0p2
-  Total: 58G   Used: 22G   Available: 34G   Usage: 40%
-[OK] All partitions normal
-
-========== System Uptime ==========
-Uptime: up 3 weeks, 2 days, 5 hours
-Current: 2026-05-16 14:30:00
+========== 安全检测 ==========
+失败登录: 3 次
+[OK] 失败登录次数正常
+SUID 文件: 42 个（标准系统文件，无异常）
+[OK] 安全检测全部正常
 
 ============================================================
-        Inspection Complete
+        Inspection Complete — Report saved to reports/
 ============================================================
 ```
 
 ---
 
-## Automated Inspection (crontab)
-
-Set up automated daily inspection with one command:
+## 定时自动巡检
 
 ```bash
-# Install daily inspection at 8:00 AM (default)
-./scripts/cron_setup.sh install
+# 安装定时任务（默认每天 8:00）
+bash scripts/cron_setup.sh install
 
-# Or customize the schedule
-./scripts/cron_setup.sh install "0 20 * * *"   # 8:00 PM daily
-./scripts/cron_setup.sh install "*/30 * * * *"  # Every 30 minutes
+# 自定义时间
+bash scripts/cron_setup.sh install "0 20 * * *"    # 每天 20:00
+bash scripts/cron_setup.sh install "*/30 * * * *"   # 每 30 分钟
 
-# Check status
-./scripts/cron_setup.sh status
+# 查看状态
+bash scripts/cron_setup.sh status
 
-# Remove scheduled task
-./scripts/cron_setup.sh uninstall
-```
-
-Reports are automatically saved with timestamps. Check them anytime:
-
-```bash
-ls -l reports/
-cat reports/latest_report.txt
+# 卸载定时任务
+bash scripts/cron_setup.sh uninstall
 ```
 
 ---
 
-## Tech Stack
+## 适用环境
 
-| Category | Technology |
-|----------|------------|
-| Main Language | Bash Shell |
-| System Commands | `free`, `df`, `ps`, `ss`, `ping`, `uptime` |
-| Text Processing | `grep`, `awk`, `sed`, `sort`, `uniq` |
-| Scheduling | crontab |
-| Version Control | Git |
-| Supported OS | Ubuntu, Debian, Raspberry Pi OS |
+- Ubuntu / Debian / Raspberry Pi OS / CentOS
+- 树莓派、VPS、homelab 服务器
+- 不需要安装任何额外软件包
 
 ---
 
-## Development Roadmap
+## License
 
-| Version | Content | Week |
-|---------|---------|------|
-| v0.1 | Project setup, Git init, System resource inspection | Week 1 |
-| v0.2 | Process monitor, basic log reading, first integration test | Week 1 |
-| v0.3 | Log anomaly stats, network check, structured report | Week 2 |
-| v0.4 | Error handling, anomaly markers, report auto-save | Done |
-| v0.5 | Crontab config, daily auto-report | Done |
-| v1.0 | Full integration, bug fixes, documentation, demo | Week 3 |
-
----
-
-## Test Plan
-
-- [ ] Functional — CPU/memory/disk data accuracy, service status, log filtering, network
-- [ ] Anomaly — high disk alert, SSH down detection, network failure feedback
-- [ ] Edge cases — empty logs, extreme CPU load, no listening ports
+MIT
