@@ -18,7 +18,7 @@ PING_COUNT=3
 DNS_TEST_DOMAIN="baidu.com"
 
 # ---------- 异常标记 ----------
-ANOMALY_FOUND=0
+NET_ANOMALY_FOUND=0
 
 # ---------- 公网连通性检测 ----------
 check_internet() {
@@ -38,7 +38,7 @@ check_internet() {
 
         if [[ $loss -ge 100 ]]; then
             echo -e "${RED}[异常] 公网完全不通，请检查网络连接${NC}"
-            ANOMALY_FOUND=1
+            NET_ANOMALY_FOUND=1
         elif [[ $loss -gt 0 ]]; then
             echo -e "${YELLOW}[注意] 存在 ${loss}% 丢包${NC}"
         else
@@ -46,7 +46,7 @@ check_internet() {
         fi
     else
         echo -e "${RED}[异常] Ping 完全失败，公网不可达${NC}"
-        ANOMALY_FOUND=1
+        NET_ANOMALY_FOUND=1
     fi
 
     echo ""
@@ -65,7 +65,7 @@ check_dns() {
         echo -e "${GREEN}[正常] DNS 解析正常${NC}"
     else
         echo -e "${RED}[异常] DNS 解析失败${NC}"
-        ANOMALY_FOUND=1
+        NET_ANOMALY_FOUND=1
     fi
 
     echo ""
@@ -91,12 +91,15 @@ check_listening_ports() {
         echo ""
         echo "协议  本地地址:端口           进程"
         echo "----------------------------------------------"
-        ss -tlnp 2>/dev/null | grep "LISTEN" | while read -r line; do
+        local ss_data
+        ss_data=$(ss -tlnp 2>/dev/null | grep "LISTEN" || true)
+        while read -r line; do
+            [[ -z "$line" ]] && continue
             local proto=$(echo "$line" | awk '{print $1}')
             local addr=$(echo "$line" | awk '{print $4}')
             local proc=$(echo "$line" | awk '{for(i=5;i<=NF;i++){if($i ~ /users:/){print $(i+1); exit}}}' | sed 's/[",]//g')
             printf "%-6s %-24s %s\n" "$proto" "$addr" "${proc:-(权限不足未显示)}"
-        done
+        done <<< "$ss_data"
     fi
 
     local port_count
@@ -136,7 +139,7 @@ check_gateway() {
             echo -e "${GREEN}[正常] 网关可达${NC}"
         else
             echo -e "${RED}[异常] 网关不可达${NC}"
-            ANOMALY_FOUND=1
+            NET_ANOMALY_FOUND=1
         fi
     else
         echo -e "${YELLOW}[警告] 未配置默认网关或无法获取网关信息${NC}"
@@ -155,28 +158,27 @@ check_interfaces() {
         echo ""; return
     fi
 
-    ip -brief addr show 2>/dev/null | while read -r line; do
+    local ip_data
+    ip_data=$(ip -brief addr show 2>/dev/null || true)
+    while read -r line; do
+        [[ -z "$line" ]] && continue
         local iface=$(echo "$line" | awk '{print $1}')
         local state=$(echo "$line" | awk '{print $2}')
         local ip_addr=$(echo "$line" | awk '{print $3}')
-
-        # 跳过 lo
-        if [[ "$iface" == "lo" ]]; then
-            continue
-        fi
-
+        [[ "$iface" == "lo" ]] && continue
         if [[ "$state" == "UP" ]]; then
             echo -e "  ${GREEN}${iface}${NC}: ${state}  IP: ${ip_addr:-无}"
         else
             echo -e "  ${YELLOW}${iface}${NC}: ${state}"
         fi
-    done
+    done <<< "$ip_data"
 
     echo ""
 }
 
 # ---------- 执行全部巡检 ----------
 run_network_check() {
+    NET_ANOMALY_FOUND=0
     echo ""
     echo "########################################################"
     echo "#              网络连通性检测报告                        #"
@@ -190,7 +192,7 @@ run_network_check() {
     check_interfaces
     check_listening_ports
 
-    if [[ $ANOMALY_FOUND -eq 1 ]]; then
+    if [[ $NET_ANOMALY_FOUND -eq 1 ]]; then
         echo -e "${RED}=============================================${NC}"
         echo -e "${RED}  警告：网络检测发现异常！${NC}"
         echo -e "${RED}=============================================${NC}"

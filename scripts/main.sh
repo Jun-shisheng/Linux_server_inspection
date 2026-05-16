@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================
 # Linux 服务器日常巡检自动化工具 — 主入口脚本
-# 版本：v0.5
+# 版本：v1.0
 # 功能：一键调用所有巡检模块，生成结构化巡检报告，异常分类汇总
 # 用法：./main.sh [--quiet]     # --quiet 适用于 crontab 静默模式
 # ============================================
@@ -29,11 +29,38 @@ log() {
     echo "$msg" | tee -a "$LOG_FILE"
 }
 
-# ---------- 运行模式 ----------
+# ---------- 命令行参数 ----------
 QUIET_MODE=0
-if [[ "${1:-}" == "--quiet" ]]; then
-    QUIET_MODE=1
-fi
+case "${1:-}" in
+    --help|-h)
+        echo "用法: ./main.sh [选项]"
+        echo ""
+        echo "Linux 服务器日常巡检自动化工具 v1.0"
+        echo ""
+        echo "选项:"
+        echo "  --quiet    静默模式，适用于 crontab 定时任务（关闭颜色、精简输出）"
+        echo "  --version  显示版本信息"
+        echo "  --help     显示此帮助信息"
+        echo ""
+        echo "模块:"
+        echo "  1. 系统资源巡检  (system_info.sh)"
+        echo "  2. 进程与服务监控 (process_check.sh)"
+        echo "  3. 日志异常分析   (log_analysis.sh)"
+        echo "  4. 网络连通性检测 (network_check.sh)"
+        echo "  6. 定时任务管理   (cron_setup.sh)"
+        echo ""
+        echo "GitHub: https://github.com/Jun-shisheng/Linux_server_inspection"
+        exit 0
+        ;;
+    --version|-v)
+        echo "Linux Server Daily Inspection Tool v1.0"
+        echo "GitHub: https://github.com/Jun-shisheng/Linux_server_inspection"
+        exit 0
+        ;;
+    --quiet)
+        QUIET_MODE=1
+        ;;
+esac
 
 # ---------- 颜色定义 ----------
 if [[ $QUIET_MODE -eq 1 ]]; then
@@ -82,7 +109,7 @@ generate_header() {
     echo "       主机名称 : ${HOSTNAME:-$(hostname 2>/dev/null || echo 'unknown')}"
     echo "       内核版本 : $(uname -r 2>/dev/null || echo 'N/A')"
     echo "       运行用户 : ${USER:-$(whoami 2>/dev/null || echo 'unknown')}"
-    echo "       工具版本 : v0.5"
+    echo "       工具版本 : v1.0"
     echo "============================================================"
     echo ""
 }

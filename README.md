@@ -2,7 +2,7 @@
 
 > Lightweight one-click Linux server health check & automated inspection tool. Built for Raspberry Pi enthusiasts, homelab owners, and Linux beginners.
 
-[![Version](https://img.shields.io/badge/version-v0.5-blue)](#)
+[![Version](https://img.shields.io/badge/version-v1.0-blue)](#)
 [![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnu-bash&logoColor=white)](#)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Raspberry%20Pi-orange)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](#)
@@ -129,7 +129,7 @@ reports/inspection_20260516_143000.txt
        Time: 2026-05-16 14:30:00
        Host: raspberrypi
        Kernel: 6.1.0-rpi7-rpi-v8
-       Version: v0.1
+       Version: v1.0
 ============================================================
 
 ========== CPU & System Load ==========

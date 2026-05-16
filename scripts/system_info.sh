@@ -18,7 +18,7 @@ MEM_USAGE_THRESHOLD=80        # 内存使用率告警阈值(%)
 DISK_USAGE_THRESHOLD=80       # 磁盘使用率告警阈值(%)
 
 # ---------- 异常标记 ----------
-ANOMALY_FOUND=0
+SYS_ANOMALY_FOUND=0
 
 # ---------- CPU 使用率与系统负载 ----------
 check_cpu() {
@@ -81,7 +81,7 @@ check_cpu() {
     load_ratio=$(awk "BEGIN {printf \"%.2f\", ${load_1min}/${cpu_cores}}")
     if awk "BEGIN {exit !(${load_1min} > ${CPU_LOAD_THRESHOLD} * ${cpu_cores})}"; then
         echo -e "${RED}[异常] 系统负载过高！1分钟负载 ${load_1min}，超过阈值${NC}"
-        ANOMALY_FOUND=1
+        SYS_ANOMALY_FOUND=1
     else
         echo -e "${GREEN}[正常] 系统负载在合理范围内${NC}"
     fi
@@ -126,7 +126,7 @@ check_memory() {
 
     if awk "BEGIN {exit !(${mem_percent} > ${MEM_USAGE_THRESHOLD})}"; then
         echo -e "${RED}[异常] 内存使用率过高！当前 ${mem_percent}%${NC}"
-        ANOMALY_FOUND=1
+        SYS_ANOMALY_FOUND=1
     else
         echo -e "${GREEN}[正常] 内存使用率正常${NC}"
     fi
@@ -138,47 +138,35 @@ check_memory() {
 check_disk() {
     echo "========== 磁盘使用情况 =========="
 
-    # 只检查物理磁盘分区，排除临时文件系统和特殊挂载
-    df -h --type ext4 --type xfs --type btrfs --type vfat --type ntfs 2>/dev/null | grep -v '^Filesystem' | while read -r line; do
-        local filesystem=$(echo "$line" | awk '{print $1}')
-        local size=$(echo "$line" | awk '{print $2}')
-        local used=$(echo "$line" | awk '{print $3}')
-        local avail=$(echo "$line" | awk '{print $4}')
-        local use_percent=$(echo "$line" | awk '{print $5}' | tr -d '%')
-        local mount_point=$(echo "$line" | awk '{print $6}')
+    local typed_df
+    typed_df=$(df -h --type ext4 --type xfs --type btrfs --type vfat --type ntfs 2>/dev/null | grep -v '^Filesystem' || true)
 
-        echo "挂载点: ${mount_point}"
-        echo "  文件系统: ${filesystem}"
-        echo "  总量: ${size}  已用: ${used}  可用: ${avail}  使用率: ${use_percent}%"
-
-        if [[ $use_percent -gt $DISK_USAGE_THRESHOLD ]]; then
-            echo -e "  ${RED}[异常] 磁盘使用率过高！当前 ${use_percent}%，超过阈值 ${DISK_USAGE_THRESHOLD}%${NC}"
-            ANOMALY_FOUND=1
-        fi
-    done
-
-    # 如果 df 按类型过滤没出结果，回退到全部挂载点（适配更多环境）
-    local typed_count
-    typed_count=$(df -h --type ext4 --type xfs --type btrfs --type vfat --type ntfs 2>/dev/null | grep -v '^Filesystem' | wc -l)
-    if [[ $typed_count -eq 0 ]]; then
-        echo "(注意：未检测到常见物理文件系统类型，显示所有挂载点)"
-        df -h | grep -vE '^Filesystem|tmpfs|devtmpfs|overlay|squashfs' | while read -r line; do
-            local filesystem=$(echo "$line" | awk '{print $1}')
-            local size=$(echo "$line" | awk '{print $2}')
-            local used=$(echo "$line" | awk '{print $3}')
-            local avail=$(echo "$line" | awk '{print $4}')
+    if [[ -n "$typed_df" ]]; then
+        while read -r line; do
             local use_percent=$(echo "$line" | awk '{print $5}' | tr -d '%')
-            local mount_point=$(echo "$line" | awk '{print $6}')
-
-            echo "挂载点: ${mount_point}"
-            echo "  文件系统: ${filesystem}"
-            echo "  总量: ${size}  已用: ${used}  可用: ${avail}  使用率: ${use_percent}%"
-
+            echo "挂载点: $(echo "$line" | awk '{print $6}')"
+            echo "  文件系统: $(echo "$line" | awk '{print $1}')"
+            echo "  总量: $(echo "$line" | awk '{print $2}')  已用: $(echo "$line" | awk '{print $3}')  可用: $(echo "$line" | awk '{print $4}')  使用率: ${use_percent}%"
+            if [[ $use_percent -gt $DISK_USAGE_THRESHOLD ]]; then
+                echo -e "  ${RED}[异常] 磁盘使用率过高！当前 ${use_percent}%，超过阈值 ${DISK_USAGE_THRESHOLD}%${NC}"
+                SYS_ANOMALY_FOUND=1
+            fi
+        done <<< "$typed_df"
+    else
+        echo "(注意：未检测到常见物理文件系统类型，显示所有挂载点)"
+        local fallback_df
+        fallback_df=$(df -h | grep -vE '^Filesystem|tmpfs|devtmpfs|overlay|squashfs' || true)
+        while read -r line; do
+            [[ -z "$line" ]] && continue
+            local use_percent=$(echo "$line" | awk '{print $5}' | tr -d '%')
+            echo "挂载点: $(echo "$line" | awk '{print $6}')"
+            echo "  文件系统: $(echo "$line" | awk '{print $1}')"
+            echo "  总量: $(echo "$line" | awk '{print $2}')  已用: $(echo "$line" | awk '{print $3}')  可用: $(echo "$line" | awk '{print $4}')  使用率: ${use_percent}%"
             if [[ $use_percent -gt $DISK_USAGE_THRESHOLD ]]; then
                 echo -e "  ${RED}[异常] 磁盘使用率过高！当前 ${use_percent}%${NC}"
-                ANOMALY_FOUND=1
+                SYS_ANOMALY_FOUND=1
             fi
-        done
+        done <<< "$fallback_df"
     fi
 
     echo ""
@@ -201,6 +189,7 @@ check_uptime() {
 
 # ---------- 执行全部巡检 ----------
 run_system_info() {
+    SYS_ANOMALY_FOUND=0
     echo ""
     echo "########################################################"
     echo "#              系统资源巡检报告                          #"
@@ -213,7 +202,7 @@ run_system_info() {
     check_disk
     check_uptime
 
-    if [[ $ANOMALY_FOUND -eq 1 ]]; then
+    if [[ $SYS_ANOMALY_FOUND -eq 1 ]]; then
         echo -e "${RED}=============================================${NC}"
         echo -e "${RED}  警告：系统资源巡检发现异常，请及时处理！${NC}"
         echo -e "${RED}=============================================${NC}"

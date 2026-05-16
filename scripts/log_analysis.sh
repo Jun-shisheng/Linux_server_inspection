@@ -18,7 +18,7 @@ MAX_LINES=5000               # 最大读取行数，避免超大文件拖慢脚�
 ERROR_KEYWORDS=("error" "fail" "warn" "critical" "emergency" "panic" "segfault" "oom")
 
 # ---------- 异常标记 ----------
-ANOMALY_FOUND=0
+LOG_ANOMALY_FOUND=0
 
 # ---------- 日志异常过滤 ----------
 check_log_anomalies() {
@@ -79,7 +79,7 @@ check_log_anomalies() {
 
     if [[ $total_matches -gt 100 ]]; then
         echo -e "${RED}[异常] 日志异常条目过多（${total_matches}），建议详细排查${NC}"
-        ANOMALY_FOUND=1
+        LOG_ANOMALY_FOUND=1
     elif [[ $total_matches -gt 0 ]]; then
         echo -e "${YELLOW}[注意] 存在 ${total_matches} 条异常日志，请关注${NC}"
     else
@@ -181,6 +181,7 @@ check_recent_errors() {
 
 # ---------- 执行全部巡检 ----------
 run_log_analysis() {
+    LOG_ANOMALY_FOUND=0
     echo ""
     echo "########################################################"
     echo "#              日志异常分析报告                          #"
@@ -192,7 +193,7 @@ run_log_analysis() {
     check_top_errors
     check_recent_errors
 
-    if [[ $ANOMALY_FOUND -eq 1 ]]; then
+    if [[ $LOG_ANOMALY_FOUND -eq 1 ]]; then
         echo -e "${RED}=============================================${NC}"
         echo -e "${RED}  警告：日志异常分析发现问题！${NC}"
         echo -e "${RED}=============================================${NC}"

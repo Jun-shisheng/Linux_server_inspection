@@ -18,7 +18,7 @@ MEM_PROCESS_THRESHOLD=50       # 单进程内存告警阈值(%)
 KEY_SERVICES=("sshd" "cron")   # 关键服务列表
 
 # ---------- 异常标记 ----------
-ANOMALY_FOUND=0
+PROC_ANOMALY_FOUND=0
 
 # ---------- TOP5 CPU 进程 ----------
 check_top_cpu_processes() {
@@ -32,21 +32,21 @@ check_top_cpu_processes() {
     printf "%-8s %-6s %-6s %-25s\n" "PID" "CPU%" "MEM%" "COMMAND"
     echo "-----------------------------------------------"
 
-    local count=0
-    ps aux --sort=-%cpu | head -6 | tail -5 | while read -r line; do
+    local top_cpu_data
+    top_cpu_data=$(ps aux --sort=-%cpu | head -6 | tail -5)
+
+    while read -r line; do
+        [[ -z "$line" ]] && continue
         local pid=$(echo "$line" | awk '{print $2}')
         local cpu=$(echo "$line" | awk '{print $3}')
         local mem=$(echo "$line" | awk '{print $4}')
         local cmd=$(echo "$line" | awk '{for(i=11;i<=NF;i++) printf "%s ", $i; print ""}' | cut -c1-25)
-
         printf "%-8s %-6s %-6s %-25s\n" "$pid" "$cpu" "$mem" "$cmd"
-
-        # 单进程 CPU 异常检测
         if awk "BEGIN {exit !(${cpu} > ${CPU_PROCESS_THRESHOLD})}" 2>/dev/null; then
             echo -e "  ${RED}[异常] 进程 PID=${pid} CPU 使用率 ${cpu}%，超过阈值${NC}"
-            ANOMALY_FOUND=1
+            PROC_ANOMALY_FOUND=1
         fi
-    done
+    done <<< "$top_cpu_data"
     echo ""
 }
 
@@ -57,20 +57,21 @@ check_top_mem_processes() {
     printf "%-8s %-6s %-6s %-25s\n" "PID" "CPU%" "MEM%" "COMMAND"
     echo "-----------------------------------------------"
 
-    ps aux --sort=-%mem | head -6 | tail -5 | while read -r line; do
+    local top_mem_data
+    top_mem_data=$(ps aux --sort=-%mem | head -6 | tail -5)
+
+    while read -r line; do
+        [[ -z "$line" ]] && continue
         local pid=$(echo "$line" | awk '{print $2}')
         local cpu=$(echo "$line" | awk '{print $3}')
         local mem=$(echo "$line" | awk '{print $4}')
         local cmd=$(echo "$line" | awk '{for(i=11;i<=NF;i++) printf "%s ", $i; print ""}' | cut -c1-25)
-
         printf "%-8s %-6s %-6s %-25s\n" "$pid" "$cpu" "$mem" "$cmd"
-
-        # 单进程内存异常检测
         if awk "BEGIN {exit !(${mem} > ${MEM_PROCESS_THRESHOLD})}" 2>/dev/null; then
             echo -e "  ${RED}[异常] 进程 PID=${pid} 内存使用率 ${mem}%，超过阈值${NC}"
-            ANOMALY_FOUND=1
+            PROC_ANOMALY_FOUND=1
         fi
-    done
+    done <<< "$top_mem_data"
     echo ""
 }
 
@@ -89,7 +90,7 @@ check_process_summary() {
     if [[ $zombie_count -gt 0 ]]; then
         echo -e "${RED}[异常] 发现 ${zombie_count} 个僵尸进程${NC}"
         ps aux | awk '$8 ~ /Z/ {printf "  PID: %-8s CMD: %s\n", $2, $11}'
-        ANOMALY_FOUND=1
+        PROC_ANOMALY_FOUND=1
     else
         echo -e "${GREEN}[正常] 无僵尸进程${NC}"
     fi
@@ -121,7 +122,7 @@ check_key_services() {
             else
                 status="已停止"
                 echo -e "  ${RED}[异常]${NC} ${service}: ${status}"
-                ANOMALY_FOUND=1
+                PROC_ANOMALY_FOUND=1
             fi
         # 回退到 service 命令
         elif command -v service &>/dev/null; then
@@ -149,6 +150,7 @@ check_key_services() {
 
 # ---------- 执行全部巡检 ----------
 run_process_check() {
+    PROC_ANOMALY_FOUND=0
     echo ""
     echo "########################################################"
     echo "#              进程与服务巡检报告                        #"
@@ -161,7 +163,7 @@ run_process_check() {
     check_process_summary
     check_key_services
 
-    if [[ $ANOMALY_FOUND -eq 1 ]]; then
+    if [[ $PROC_ANOMALY_FOUND -eq 1 ]]; then
         echo -e "${RED}=============================================${NC}"
         echo -e "${RED}  警告：进程与服务巡检发现异常！${NC}"
         echo -e "${RED}=============================================${NC}"
