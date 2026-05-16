@@ -2,7 +2,7 @@
 
 > Lightweight one-click Linux server health check & automated inspection tool. Built for Raspberry Pi enthusiasts, homelab owners, and Linux beginners.
 
-[![Version](https://img.shields.io/badge/version-v0.2-blue)](#)
+[![Version](https://img.shields.io/badge/version-v0.3-blue)](#)
 [![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnu-bash&logoColor=white)](#)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Raspberry%20Pi-orange)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](#)
@@ -74,7 +74,7 @@ cat reports/inspection_*.txt
 | 1 | **System Resources** | CPU usage, load average, memory, disk partitions, uptime | Done |
 | 2 | **Process & Service** | TOP5 CPU/memory processes, sshd/cron health check | Done |
 | 3 | **Log Analysis** | syslog `error`/`fail`/`warn` keyword filter & stats | Done |
-| 4 | **Network Check** | Public internet ping, local port listening check | Planned |
+| 4 | **Network Check** | Public internet ping, local port listening check | Done |
 | 5 | **Report Generator** | Consolidated structured text report with anomaly markers | Planned |
 | 6 | **Scheduled Task** | crontab daily auto-run + report archival | Planned |
 
@@ -89,7 +89,7 @@ Linux_server_inspection/
 │   ├── system_info.sh         # Module 1: System resource inspection
 │   ├── process_check.sh       # Module 2: Process & service monitor (coming)
 │   ├── log_analysis.sh        # Module 3: Log anomaly analysis (coming)
-│   ├── network_check.sh       # Module 4: Network connectivity (coming)
+│   ├── network_check.sh       # Module 4: Network connectivity
 │   └── report_gen.sh          # Module 5: Report formatting (coming)
 ├── reports/                   # Generated inspection reports
 ├── logs/                      # Runtime logs
