@@ -27,13 +27,43 @@ NET_ANOMALY_FOUND=0
 check_internet() {
     echo "========== 公网连通性 =========="
 
-    # ping 测试
+    # 检查 ping 命令是否可用
+    if ! command -v ping &>/dev/null; then
+        echo -e "${YELLOW}[警告] ping 命令不可用，尝试其他连通性检测方式${NC}"
+        # 改用 curl 或 wget 测试
+        if command -v curl &>/dev/null; then
+            if curl -s --connect-timeout 5 -o /dev/null "http://${PING_TARGET}" 2>/dev/null; then
+                echo -e "${GREEN}[正常] HTTP 连通性正常（ping不可用，curl 替代）${NC}"
+            else
+                echo -e "${RED}[异常] HTTP 连通性测试失败${NC}"
+                NET_ANOMALY_FOUND=1
+            fi
+        elif command -v wget &>/dev/null; then
+            if wget -q --timeout=5 -O /dev/null "http://${PING_TARGET}" 2>/dev/null; then
+                echo -e "${GREEN}[正常] HTTP 连通性正常（ping不可用，wget 替代）${NC}"
+            else
+                echo -e "${RED}[异常] HTTP 连通性测试失败${NC}"
+                NET_ANOMALY_FOUND=1
+            fi
+        else
+            echo -e "${RED}[错误] 所有连通性检测工具（ping/curl/wget）均不可用${NC}"
+            NET_ANOMALY_FOUND=1
+        fi
+        echo ""
+        return
+    fi
+
+    # ping 测试（兼容无 -oP 的 grep）
     local ping_result
     if ping_result=$(ping -c "$PING_COUNT" -W 3 "$PING_TARGET" 2>&1); then
+        # grep -oP 在 BusyBox/macOS 上不可用，使用兼容方式解析
         local loss
-        loss=$(echo "$ping_result" | grep -oP '\d+(?=% packet loss)' || echo "0")
+        loss=$(echo "$ping_result" | grep -o '[0-9]*% packet loss' | grep -o '[0-9]*' || echo "0")
         local avg_rtt
-        avg_rtt=$(echo "$ping_result" | grep -oP '[\d.]+(?=/\d+\.\d+/\d+\.\d+ ms)' | tail -1 || echo "N/A")
+        avg_rtt=$(echo "$ping_result" | grep -o 'avg = [0-9]*\.[0-9]*' | grep -o '[0-9]*\.[0-9]*' | tail -1 || echo "")
+        if [[ -z "$avg_rtt" ]]; then
+            avg_rtt=$(echo "$ping_result" | grep -o 'time=[0-9]*\.[0-9]*' | head -1 | grep -o '[0-9]*\.[0-9]*' || echo "N/A")
+        fi
 
         echo "Ping 目标: ${PING_TARGET}"
         echo "丢包率: ${loss}%"
@@ -49,6 +79,7 @@ check_internet() {
         fi
     else
         echo -e "${RED}[异常] Ping 完全失败，公网不可达${NC}"
+        echo "Ping 输出: $(echo "$ping_result" | tail -1)"
         NET_ANOMALY_FOUND=1
     fi
 
@@ -59,12 +90,25 @@ check_internet() {
 check_dns() {
     echo "========== DNS 解析 =========="
 
-    local dns_result
-    if dns_result=$(nslookup "$DNS_TEST_DOMAIN" 2>&1); then
-        local ip
-        ip=$(echo "$dns_result" | grep -A1 "Name:" | grep "Address:" | awk '{print $2}' | head -1)
-        echo "DNS 测试域名: ${DNS_TEST_DOMAIN}"
-        echo "解析结果: ${ip:-N/A}"
+    local resolved_ip=""
+
+    # 依次尝试 dig → nslookup → host
+    if command -v dig &>/dev/null; then
+        resolved_ip=$(dig +short "$DNS_TEST_DOMAIN" 2>/dev/null | head -1)
+    elif command -v nslookup &>/dev/null; then
+        local dns_result
+        dns_result=$(nslookup "$DNS_TEST_DOMAIN" 2>&1)
+        resolved_ip=$(echo "$dns_result" | grep -A1 "Name:" | grep "Address:" | awk '{print $2}' | head -1)
+    elif command -v host &>/dev/null; then
+        resolved_ip=$(host "$DNS_TEST_DOMAIN" 2>/dev/null | grep "has address" | awk '{print $NF}' | head -1)
+    else
+        echo -e "${YELLOW}[警告] DNS 解析工具（dig/nslookup/host）均不可用${NC}"
+        echo ""; return
+    fi
+
+    echo "DNS 测试域名: ${DNS_TEST_DOMAIN}"
+    if [[ -n "$resolved_ip" ]]; then
+        echo "解析结果: ${resolved_ip}"
         echo -e "${GREEN}[正常] DNS 解析正常${NC}"
     else
         echo -e "${RED}[异常] DNS 解析失败${NC}"
@@ -78,19 +122,9 @@ check_dns() {
 check_listening_ports() {
     echo "========== 本地监听端口 =========="
 
-    if ! command -v ss &>/dev/null; then
-        echo -e "${YELLOW}[警告] ss 命令不可用，尝试 netstat${NC}"
-        if command -v netstat &>/dev/null; then
-            echo ""
-            echo "协议  本地地址:端口           状态"
-            echo "--------------------------------"
-            netstat -tlnp 2>/dev/null | grep "LISTEN" | awk '{printf "%-6s %-24s %s\n", $1, $4, $6}' || echo "(无监听端口)"
-        else
-            echo "(无法检测监听端口)"
-            echo ""
-            return
-        fi
-    else
+    local port_count=0
+
+    if command -v ss &>/dev/null; then
         echo ""
         echo "协议  本地地址:端口           进程"
         echo "----------------------------------------------"
@@ -98,15 +132,33 @@ check_listening_ports() {
         ss_data=$(ss -tlnp 2>/dev/null | grep "LISTEN" || true)
         while read -r line; do
             [[ -z "$line" ]] && continue
+            port_count=$((port_count + 1))
             local proto=$(echo "$line" | awk '{print $1}')
             local addr=$(echo "$line" | awk '{print $4}')
             local proc=$(echo "$line" | awk '{for(i=5;i<=NF;i++){if($i ~ /users:/){print $(i+1); exit}}}' | sed 's/[",]//g')
             printf "%-6s %-24s %s\n" "$proto" "$addr" "${proc:-(权限不足未显示)}"
         done <<< "$ss_data"
+    elif command -v netstat &>/dev/null; then
+        echo -e "${YELLOW}[信息] ss 不可用，使用 netstat 替代${NC}"
+        echo ""
+        echo "协议  本地地址:端口           进程"
+        echo "--------------------------------"
+        local ns_data
+        ns_data=$(netstat -tlnp 2>/dev/null | grep "LISTEN" || true)
+        while read -r line; do
+            [[ -z "$line" ]] && continue
+            port_count=$((port_count + 1))
+            local proto=$(echo "$line" | awk '{print $1}')
+            local addr=$(echo "$line" | awk '{print $4}')
+            local proc=$(echo "$line" | awk '{print $7}')
+            printf "%-6s %-24s %s\n" "$proto" "$addr" "${proc:-(权限不足未显示)}"
+        done <<< "$ns_data"
+    else
+        echo "(无法检测监听端口：ss 和 netstat 均不可用)"
+        echo ""
+        return
     fi
 
-    local port_count
-    port_count=$(ss -tlnp 2>/dev/null | grep -c "LISTEN" || echo 0)
     echo ""
     echo "监听端口总数: ${port_count}"
 

@@ -64,10 +64,13 @@ check_log_anomalies() {
         echo "(分析最近 ${MAX_LINES} 行)"
     fi
 
+    # 优化：一次读取 + awk 多关键词扫描，避免对每个关键词跑一次 tail|grep
+    local log_sample
+    log_sample=$(tail -n "$tail_lines" "$SYSLOG_PATH" 2>/dev/null)
+
     for keyword in "${ERROR_KEYWORDS[@]}"; do
-        # 使用 tail 取最近行，-i 忽略大小写
         local count
-        count=$(tail -n "$tail_lines" "$SYSLOG_PATH" | grep -i -c "$keyword" 2>/dev/null || echo 0)
+        count=$(echo "$log_sample" | grep -i -c "$keyword" 2>/dev/null || echo 0)
         total_matches=$((total_matches + count))
 
         if [[ $count -gt 0 ]]; then
