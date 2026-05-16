@@ -1,0 +1,63 @@
+name: ShellCheck
+
+on:
+  push:
+    branches: [master, develop]
+    paths:
+      - 'scripts/*.sh'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'scripts/*.sh'
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: ./scripts
+          severity: style
+          format: gcc
+          ignore: cron_setup.sh  # cron_setup may use system-specific paths
+
+  shell-test:
+    name: Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check bash syntax
+        run: |
+          for f in scripts/*.sh; do
+            echo "Checking $f..."
+            bash -n "$f" && echo "  ✓ Syntax OK" || exit 1
+          done
+
+  basic-run:
+    name: Basic Dry-Run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq iproute2 net-tools bind9-host curl
+      - name: Dry-run (main.sh --help)
+        run: |
+          chmod +x scripts/main.sh
+          ./scripts/main.sh --help
+      - name: Dry-run each module standalone
+        run: |
+          for f in scripts/*.sh; do
+            echo "=== Standalone test: $f ==="
+            chmod +x "$f"
+            bash -n "$f" || exit 1
+          done

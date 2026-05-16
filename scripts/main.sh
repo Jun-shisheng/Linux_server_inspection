@@ -46,8 +46,9 @@ case "${1:-}" in
         echo "  1. 系统资源巡检  (system_info.sh)"
         echo "  2. 进程与服务监控 (process_check.sh)"
         echo "  3. 日志异常分析   (log_analysis.sh)"
-        echo "  4. 网络连通性检测 (network_check.sh)"
-        echo "  6. 定时任务管理   (cron_setup.sh)"
+echo "  4. 网络连通性检测 (network_check.sh)"
+echo "  5. 安全检测       (security_check.sh)"
+echo "  6. 定时任务管理   (cron_setup.sh)"
         echo ""
         echo "GitHub: https://github.com/Jun-shisheng/Linux_server_inspection"
         exit 0
@@ -96,6 +97,7 @@ load_module "系统资源巡检"     "${SCRIPT_DIR}/system_info.sh"
 load_module "进程与服务监控"   "${SCRIPT_DIR}/process_check.sh"
 load_module "日志异常分析"     "${SCRIPT_DIR}/log_analysis.sh"
 load_module "网络连通性检测"   "${SCRIPT_DIR}/network_check.sh"
+load_module "安全检测"         "${SCRIPT_DIR}/security_check.sh"
 
 log "模块加载: 成功 ${MODULES_LOADED} / 失败 ${MODULES_FAILED}"
 log "开始执行巡检..."
@@ -233,6 +235,13 @@ REPORT_CONTENT=$(
         run_network_check
     else
         echo "[错误] 网络连通性检测模块未加载，跳过"
+    fi
+
+    # 模块5
+    if declare -f run_security_check &>/dev/null; then
+        run_security_check
+    else
+        echo "[错误] 安全检测模块未加载，跳过"
     fi
 )
 
