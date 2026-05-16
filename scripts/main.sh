@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================
 # Linux 服务器日常巡检自动化工具 — 主入口脚本
-# 版本：v0.1
+# 版本：v0.2
 # 功能：一键调用所有巡检模块，生成巡检报告
 # ============================================
 
@@ -38,9 +38,23 @@ else
     log "警告: 未找到 system_info.sh"
 fi
 
+# 模块2：进程与服务监控
+if [[ -f "${SCRIPT_DIR}/process_check.sh" ]]; then
+    source "${SCRIPT_DIR}/process_check.sh"
+    log "已加载: 进程与服务监控模块"
+else
+    log "警告: 未找到 process_check.sh"
+fi
+
+# 模块3：日志异常分析
+if [[ -f "${SCRIPT_DIR}/log_analysis.sh" ]]; then
+    source "${SCRIPT_DIR}/log_analysis.sh"
+    log "已加载: 日志异常分析模块"
+else
+    log "警告: 未找到 log_analysis.sh"
+fi
+
 # TODO: 后续模块在此加载
-# source "${SCRIPT_DIR}/process_check.sh"   # v0.2
-# source "${SCRIPT_DIR}/log_analysis.sh"    # v0.3
 # source "${SCRIPT_DIR}/network_check.sh"   # v0.3
 
 log "模块加载完成，开始执行巡检..."
@@ -52,7 +66,7 @@ log "模块加载完成，开始执行巡检..."
     echo "       生成时间: $(date '+%Y-%m-%d %H:%M:%S')"
     echo "       主机名称: $(hostname)"
     echo "       内核版本: $(uname -r)"
-    echo "       工具版本: v0.1"
+    echo "       工具版本: v0.2"
     echo "============================================================"
     echo ""
 
@@ -63,9 +77,21 @@ log "模块加载完成，开始执行巡检..."
         echo "[错误] 系统资源巡检模块未加载，跳过"
     fi
 
+    # 模块2：进程与服务监控
+    if declare -f run_process_check &>/dev/null; then
+        run_process_check
+    else
+        echo "[错误] 进程与服务监控模块未加载，跳过"
+    fi
+
+    # 模块3：日志异常分析
+    if declare -f run_log_analysis &>/dev/null; then
+        run_log_analysis
+    else
+        echo "[错误] 日志异常分析模块未加载，跳过"
+    fi
+
     # TODO: 后续模块在此调用
-    # run_process_check   # v0.2
-    # run_log_analysis    # v0.3
     # run_network_check   # v0.3
 
     echo "============================================================"

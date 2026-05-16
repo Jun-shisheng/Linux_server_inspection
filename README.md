@@ -2,7 +2,7 @@
 
 > Lightweight one-click Linux server health check & automated inspection tool. Built for Raspberry Pi enthusiasts, homelab owners, and Linux beginners.
 
-[![Version](https://img.shields.io/badge/version-v0.1-blue)](#)
+[![Version](https://img.shields.io/badge/version-v0.2-blue)](#)
 [![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnu-bash&logoColor=white)](#)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Raspberry%20Pi-orange)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](#)
@@ -72,8 +72,8 @@ cat reports/inspection_*.txt
 | # | Module | Description | Status |
 |---|--------|-------------|--------|
 | 1 | **System Resources** | CPU usage, load average, memory, disk partitions, uptime | Done |
-| 2 | **Process & Service** | TOP5 CPU/memory processes, sshd/cron health check | Planned |
-| 3 | **Log Analysis** | syslog `error`/`fail`/`warn` keyword filter & stats | Planned |
+| 2 | **Process & Service** | TOP5 CPU/memory processes, sshd/cron health check | Done |
+| 3 | **Log Analysis** | syslog `error`/`fail`/`warn` keyword filter & stats | Done |
 | 4 | **Network Check** | Public internet ping, local port listening check | Planned |
 | 5 | **Report Generator** | Consolidated structured text report with anomaly markers | Planned |
 | 6 | **Scheduled Task** | crontab daily auto-run + report archival | Planned |
