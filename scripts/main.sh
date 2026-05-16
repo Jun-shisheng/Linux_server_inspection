@@ -1,8 +1,9 @@
 #!/bin/bash
 # ============================================
 # Linux 服务器日常巡检自动化工具 — 主入口脚本
-# 版本：v0.4
+# 版本：v0.5
 # 功能：一键调用所有巡检模块，生成结构化巡检报告，异常分类汇总
+# 用法：./main.sh [--quiet]     # --quiet 适用于 crontab 静默模式
 # ============================================
 
 set -euo pipefail
@@ -28,11 +29,21 @@ log() {
     echo "$msg" | tee -a "$LOG_FILE"
 }
 
+# ---------- 运行模式 ----------
+QUIET_MODE=0
+if [[ "${1:-}" == "--quiet" ]]; then
+    QUIET_MODE=1
+fi
+
 # ---------- 颜色定义 ----------
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-GREEN='\033[0;32m'
-NC='\033[0m'
+if [[ $QUIET_MODE -eq 1 ]]; then
+    RED='' YELLOW='' GREEN='' NC=''
+else
+    RED='\033[0;31m'
+    YELLOW='\033[1;33m'
+    GREEN='\033[0;32m'
+    NC='\033[0m'
+fi
 
 # ---------- 加载模块 ----------
 log "========== 开始巡检 =========="
@@ -71,7 +82,7 @@ generate_header() {
     echo "       主机名称 : ${HOSTNAME:-$(hostname 2>/dev/null || echo 'unknown')}"
     echo "       内核版本 : $(uname -r 2>/dev/null || echo 'N/A')"
     echo "       运行用户 : ${USER:-$(whoami 2>/dev/null || echo 'unknown')}"
-    echo "       工具版本 : v0.4"
+    echo "       工具版本 : v0.5"
     echo "============================================================"
     echo ""
 }
@@ -221,6 +232,8 @@ cleanup_old_reports
 log "巡检报告已保存至: $REPORT_FILE"
 log "========== 巡检结束 =========="
 
-echo ""
-echo "报告文件: $REPORT_FILE"
-echo "最新报告: $LATEST_REPORT"
+if [[ $QUIET_MODE -eq 0 ]]; then
+    echo ""
+    echo "报告文件: $REPORT_FILE"
+    echo "最新报告: $LATEST_REPORT"
+fi

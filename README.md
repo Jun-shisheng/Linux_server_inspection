@@ -2,7 +2,7 @@
 
 > Lightweight one-click Linux server health check & automated inspection tool. Built for Raspberry Pi enthusiasts, homelab owners, and Linux beginners.
 
-[![Version](https://img.shields.io/badge/version-v0.4-blue)](#)
+[![Version](https://img.shields.io/badge/version-v0.5-blue)](#)
 [![Shell](https://img.shields.io/badge/shell-bash-4EAA25?logo=gnu-bash&logoColor=white)](#)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Raspberry%20Pi-orange)](#)
 [![License](https://img.shields.io/badge/license-MIT-green)](#)
@@ -76,7 +76,7 @@ cat reports/inspection_*.txt
 | 3 | **Log Analysis** | syslog `error`/`fail`/`warn` keyword filter & stats | Done |
 | 4 | **Network Check** | Public internet ping, local port listening check | Done |
 | 5 | **Report Generator** | Consolidated structured text report with anomaly markers | Planned |
-| 6 | **Scheduled Task** | crontab daily auto-run + report archival | Planned |
+| 6 | **Scheduled Task** | crontab daily auto-run + report archival | Done |
 
 ---
 
@@ -87,10 +87,10 @@ Linux_server_inspection/
 ├── scripts/
 │   ├── main.sh                # Main entry script
 │   ├── system_info.sh         # Module 1: System resource inspection
-│   ├── process_check.sh       # Module 2: Process & service monitor (coming)
-│   ├── log_analysis.sh        # Module 3: Log anomaly analysis (coming)
+│   ├── process_check.sh       # Module 2: Process & service monitor
+│   ├── log_analysis.sh        # Module 3: Log anomaly analysis
 │   ├── network_check.sh       # Module 4: Network connectivity
-│   └── report_gen.sh          # Module 5: Report formatting (coming)
+│   └── cron_setup.sh           # Module 6: Crontab task manager
 ├── reports/                   # Generated inspection reports
 ├── logs/                      # Runtime logs
 ├── README.md
@@ -161,20 +161,28 @@ Current: 2026-05-16 14:30:00
 
 ## Automated Inspection (crontab)
 
-Set up a daily automated inspection at 8:00 AM:
+Set up automated daily inspection with one command:
 
 ```bash
-# Edit crontab
-crontab -e
+# Install daily inspection at 8:00 AM (default)
+./scripts/cron_setup.sh install
 
-# Add this line (replace /path/to with your actual path)
-0 8 * * * /path/to/Linux_server_inspection/scripts/main.sh
+# Or customize the schedule
+./scripts/cron_setup.sh install "0 20 * * *"   # 8:00 PM daily
+./scripts/cron_setup.sh install "*/30 * * * *"  # Every 30 minutes
+
+# Check status
+./scripts/cron_setup.sh status
+
+# Remove scheduled task
+./scripts/cron_setup.sh uninstall
 ```
 
 Reports are automatically saved with timestamps. Check them anytime:
 
 ```bash
 ls -l reports/
+cat reports/latest_report.txt
 ```
 
 ---
@@ -200,7 +208,7 @@ ls -l reports/
 | v0.2 | Process monitor, basic log reading, first integration test | Week 1 |
 | v0.3 | Log anomaly stats, network check, structured report | Week 2 |
 | v0.4 | Error handling, anomaly markers, report auto-save | Done |
-| v0.5 | Crontab config, daily auto-report | Week 3 |
+| v0.5 | Crontab config, daily auto-report | Done |
 | v1.0 | Full integration, bug fixes, documentation, demo | Week 3 |
 
 ---
